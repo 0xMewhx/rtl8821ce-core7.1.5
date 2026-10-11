@@ -37,3 +37,12 @@ Or via DKMS: `sudo ./dkms-install.sh`
 ## License
 
 GPL, same as original driver. See `COPYING`.
+
+## Key fix detail
+
+`cfg80211_rtw_del_key()` in `os_dep/linux/ioctl_cfg80211.c` used the old
+`del_key(wiphy, netdev, ...)` callback signature. Kernel 7.1+ cfg80211 API
+passes `struct wireless_dev *wdev` instead of `struct net_device *netdev`.
+Fixed by changing the parameter to `wdev` and deriving `netdev` from
+`wdev->netdev` inside the function body, so the rest of the function logic
+didn't need touching.
