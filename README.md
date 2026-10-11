@@ -185,3 +185,8 @@ Please avoid opening issues about this.
 ### Monitor (promiscuous) mode doesn't work
 This driver doesn't support it and never will.
 Please avoid opening issues about this.
+
+## Known issues
+
+- `iw wlan0 set type monitor` fails with `command failed: Operation not supported (-95)` on kernel 7.1.5.
+  Use `iwconfig wlan0 mode monitor` instead — works reliably.
