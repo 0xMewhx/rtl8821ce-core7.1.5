@@ -1,192 +1,39 @@
-# Realtek RTL8821CE Driver
+# rtl8821ce-core7.1.5
 
-## Intent
-This repository hosts the code for the [Arch Linux AUR Package](https://aur.archlinux.org/packages/rtl8821ce-dkms-git/). It's targeting Linux > 4.14 and is being developed for Arch Linux and Ubuntu 18.10. No support will be provided for other Linux distributions or Linux Kernel versions outside of that range.
+Fork of [rtl8821ce](https://github.com/tomaspinho/rtl8821ce) driver, patched to build and work on Linux kernel 7.1.5+ (tested on Kali).
 
-## Disclaimer
-The maintainers of this repository are not Realtek employees and are maintaining this repository for their own usage. Further feature development (such as proper power saving, etc.) will not be pursued here, but will be gladly integrated if newer driver sources are provided by Realtek. Use at your own risk.
+Original driver didn't compile on newer kernels — API changes broke the build and packet injection was broken. This fork fixes both.
 
-## DKMS
-This driver can be installed using [DKMS](http://linux.dell.com/dkms/). This is a system which will automatically recompile and install a kernel module when a new kernel gets installed or updated. To make use of DKMS, install the `dkms` package.
+## What's changed
 
-
-## Installation of Driver
-Make sure you have a proper build environment and `dkms` installed.
-
-### Ubuntu & Debian
-The following steps are required prior to building the driver on Ubuntu/Debian:
-```
-sudo apt install bc module-assistant build-essential dkms
-sudo m-a prepare
-```
-Ubuntu users may also install the prebuilt [rtl8821ce-dkms](https://packages.ubuntu.com/bionic-updates/rtl8821ce-dkms) package, an older version of the driver maintained by the Ubuntu MOTU Developers group for bionic, eoan and focal. It has been known to work in cases where the newer driver available here does not. Bugs and issues with that package should be reported at [Launchpad](https://launchpad.net/ubuntu/+source/rtl8821ce/+bugs) rather than here.
-
-### Arch Linux
-Make sure you have the `base-devel` package group installed before you proceed for the necessary compilation tools.
-
-#### Installing from AUR
-
-Install [rtl8821ce-dkms-git](https://aur.archlinux.org/packages/rtl8821ce-dkms-git/) from the [AUR](https://wiki.archlinux.org/index.php/Arch_User_Repository).
-
-#### Dependencies for manual installation on Arch Linux
-```
-sudo pacman -Syu linux-headers dkms bc
-```
-If you are running a non-vanilla kernel then install the headers to match the kernel package. Proceed to the section below.
-
-### Gentoo Linux
-An unofficial Gentoo package is available, using this repository as upstream. It is available from the [trolltoo](https://github.com/dallenwilson/trolltoo) overlay. Gentoo does not use or require dkms for packaged drivers.
-```
-# layman -a trolltoo
-# emerge --ask net-wireless/rtl8821ce-driver
-```
-
-### NixOS
-An unofficial nix package is available from [nixpkgs](https://github.com/NixOS/nixpkgs/blob/master/pkgs/os-specific/linux/rtl8821ce/default.nix). It can be installed by adding the following to `/etc/nixos/configuration.nix`:
-``` nix
-boot.kernelModules = [ "8821ce" ]
-boot.extraModulePackages = with config.boot.kernelPackages; [
-  rtl8821ce
-];
-```
-Then apply the changes:
-```
-sudo nixos-rebuild switch
-```
-And reboot. 
-If you are not using the latest linux kernel the package used will be different. Check the [NixOS packages](https://search.nixos.org/packages?type=packages&query=rtl8821ce) to see if your version is supported.
-
-### Manual installation of driver
-In order to install the driver open a terminal in the directory with the source code and execute the following command:
-```
-sudo ./dkms-install.sh
-```
-
-## Removal of Driver
-Open a terminal window and git clone the repository to your local disk
-
-```
-git clone https://github.com/tomaspinho/rtl8821ce.git
-cd rtl8821ce
-```
-
-Then run the removal script:
-```
-sudo ./dkms-remove.sh
-```
-
-## Upgrading driver
-Remove the driver:
-```
-sudo ./dkms-remove.sh
-```
-
-Make sure you have your local copy of this repository fully updated:
-```
-git pull
-```
-
-Clean any stale binaries:
-```
-make clean
-```
-
-Install again:
-```
-sudo ./dkms-install.sh
-```
-
-## Reporting issues
-When reporting issues, please make sure that debugging is enabled. To enable debugging either set `MAKEFLAGS="CONFIG_RTW_DEBUG = y"` before compilation or edit Makefile:
-```
-CONFIG_RTW_DEBUG = y
-```
-This will enable verbose debug logging, helpful to developers.
-
-## Possible issues
-
-### PCIe Active State Power Management
-Your distribution may come with PCIe Active State Power Management enabled by default. That may conflict with this driver. To disable:
-
-```
-sudo $EDITOR /etc/default/grub
-```
-Add pcie_aspm=off at the end of GRUB_CMDLINE_LINUX_DEFAULT. Line should look like this:
-
-```
-GRUB_CMDLINE_LINUX_DEFAULT="quiet splash pcie_aspm=off"
-```
-
-Then update your GRUB configuration:
-```
-sudo update-grub
-```
-
-On systems that doesn't have `update-grub` but have `grubby` like Fedora, you can directly execute instead:
-```
-sudo grubby --update-kernel=ALL --args=pcie_aspm=off
-```
-Reboot.
-
-### Lenovo Yoga laptops
-
-Some new Yoga laptops (like the Yoga 530) come with `rtl8821ce` as the Wi-Fi/Bluetooth chip. But the `ideapad-laptop` module, which may come included in your distribution, may conflict with this driver. To disable:
-
-```
-sudo modprobe -r ideapad_laptop
-```
-
-### BlueTooth is not working
-
-This may be due to the Kernel loading up the wrong firmware file for this card. Please take a look at [@wahsot](https://github.com/wahsot)'s tutorial at https://github.com/tomaspinho/rtl8821ce/issues/19#issuecomment-452196840 to see if that helps you out.
-
-### Secure Boot
-
-If your system uses Secure Boot, the kernel will not accept user-supplied modules. There are two ways to solve this issue:
-1. Disable Secure Boot via BIOS/UEFI settings.
-2. Create or use an existing MOK (Machine Owner Key) to sign the compiled `.ko` linux kernel object produced by DKMS.
-
-### Unstable connection - slowdowns or dropouts
-
-The problem may be due to the periodic scanning of access points by the network applet.
-
-> This fix worked helpful on Pop! _OS/Ubuntu 20.10 and Fedora 33. Both with GNOME and NetworkManager. [#179](https://github.com/tomaspinho/rtl8821ce/issues/179)
-
-Set the BSSID from your network applet. In GNOME this can be done in `WiFi Settings > Your profile > Identity > BSSID`.
-
-We are going to disable the *Connectivity Check* option in NetworkManager. This by editing the file in `/var/lib/NetworkManager/NetworkManager-intern.conf` and adding the following instructions at the end:
-
-```
-[connectivity]
-.set.enabled=false
-```
-
-Then, just reboot or restart the NetworkManager unit to fix the problem.
-
-### Wi-Fi not working for kernel >= 5.9
-The Linux Kernel 5.9 version comes with a broken `rtw88` module developed by Realtek that has poor compatibility with most revisions of the 8821ce chip.
-
-You must disable it by adding the following to your module blacklists (`/etc/modprobe.d/blacklist.conf`):
-
-```
-blacklist rtw88_8821ce
-``` 
-
-Then, make sure you have the rtl8821ce module correctly installed. 
-
-Turn off your computer, wait a few seconds (to force firmware reload) and then turn it on again.
-
-### Wi-Fi and Bluetooth don't work after suspend
-
-This is a bug that won't be fixed until/if Realtek implements proper power management themselves.
-Given they are now only working in `rtw88`, this driver will most likely never be fixed in this regard.
-Please avoid opening issues about this.
-
-### Monitor (promiscuous) mode doesn't work
-This driver doesn't support it and never will.
-Please avoid opening issues about this.
+- `Makefile` — fixed build rules for kernel 7.1+ (kernel API changes)
+- `core/rtw_debug.c` — adapted to new kernel debug API
+- `core/rtw_mlme_ext.c` — fixed MLME extension compatibility
+- `hal/hal_com.c` — hardware abstraction layer fixes for new kernel
+- `os_dep/linux/ioctl_cfg80211.c` — cfg80211 ioctl compatibility, packet injection fix
+- `monitorfix.patch` — patch for monitor mode issues
 
 ## Known issues
 
 - `iw wlan0 set type monitor` fails with `command failed: Operation not supported (-95)` on kernel 7.1.5.
   Use `iwconfig wlan0 mode monitor` instead — works reliably.
+
+## Install
+
+```bash
+git clone git@github.com:0xMewhx/rtl8821ce-core7.1.5.git
+cd rtl8821ce-core7.1.5
+make
+sudo insmod 8821ce.ko
+```
+
+Or via DKMS: `sudo ./dkms-install.sh`
+
+## Tested
+
+- Kernel 7.1.5+kali-amd64
+- Packet injection confirmed working via `aireplay-ng --test` (90-100% success rate)
+
+## License
+
+GPL, same as original driver. See `COPYING`.
