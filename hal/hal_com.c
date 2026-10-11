@@ -3580,6 +3580,14 @@ void rtw_hal_rcr_set_chk_bssid(_adapter *adapter, u8 self_action)
 	rtw_hal_get_hwreg(adapter, HW_VAR_RCR, (u8 *)&rcr);
 	rcr_new = rcr;
 
+	/* monitor mode: must receive frames of any BSSID (beacons included) */
+	if (check_fwstate(&adapter->mlmepriv, WIFI_MONITOR_STATE) == _TRUE) {
+		rcr_new &= ~(RCR_CBSSID_BCN | RCR_CBSSID_DATA);
+		if (rcr != rcr_new)
+			rtw_hal_set_hwreg(adapter, HW_VAR_RCR, (u8 *)&rcr_new);
+		return;
+	}
+
 #if defined(CONFIG_MI_WITH_MBSSID_CAM) && !defined(CONFIG_CLIENT_PORT_CFG)
 	rcr_new &= ~(RCR_CBSSID_BCN | RCR_CBSSID_DATA);
 #else

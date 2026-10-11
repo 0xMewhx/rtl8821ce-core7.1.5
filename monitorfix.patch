@@ -1,0 +1,30 @@
+--- a/hal/hal_com.c
++++ b/hal/hal_com.c
+@@ -3580,6 +3580,14 @@
+ 	rtw_hal_get_hwreg(adapter, HW_VAR_RCR, (u8 *)&rcr);
+ 	rcr_new = rcr;
+ 
++	/* monitor mode: must receive frames of any BSSID (beacons included) */
++	if (check_fwstate(&adapter->mlmepriv, WIFI_MONITOR_STATE) == _TRUE) {
++		rcr_new &= ~(RCR_CBSSID_BCN | RCR_CBSSID_DATA);
++		if (rcr != rcr_new)
++			rtw_hal_set_hwreg(adapter, HW_VAR_RCR, (u8 *)&rcr_new);
++		return;
++	}
++
+ #if defined(CONFIG_MI_WITH_MBSSID_CAM) && !defined(CONFIG_CLIENT_PORT_CFG)
+ 	rcr_new &= ~(RCR_CBSSID_BCN | RCR_CBSSID_DATA);
+ #else
+--- a/core/rtw_mlme_ext.c
++++ b/core/rtw_mlme_ext.c
+@@ -12076,6 +12076,10 @@
+ 	u8 state_backup = (pmlmeinfo->state & 0x03);
+ 	u8 ASIX_ID[] = {0x00, 0x0E, 0xC6};
+ 
++	/* monitor mode has nothing to disconnect; don't reset MSR/BSSID/RCR */
++	if (check_fwstate(pmlmepriv, WIFI_MONITOR_STATE) == _TRUE)
++		return;
++
+ 	if (MLME_IS_AP(padapter))
+ 		self_action = MLME_AP_STOPPED;
+ 	else if (MLME_IS_MESH(padapter))

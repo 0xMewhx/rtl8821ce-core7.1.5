@@ -12076,6 +12076,10 @@ static void rtw_mlmeext_disconnect(_adapter *padapter)
 	u8 state_backup = (pmlmeinfo->state & 0x03);
 	u8 ASIX_ID[] = {0x00, 0x0E, 0xC6};
 
+	/* monitor mode has nothing to disconnect */
+	if (check_fwstate(pmlmepriv, WIFI_MONITOR_STATE) == _TRUE)
+		return;
+
 	if (MLME_IS_AP(padapter))
 		self_action = MLME_AP_STOPPED;
 	else if (MLME_IS_MESH(padapter))
