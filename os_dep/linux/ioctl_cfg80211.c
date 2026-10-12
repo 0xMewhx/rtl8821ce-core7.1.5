@@ -2493,6 +2493,13 @@ static int cfg80211_rtw_change_iface(struct wiphy *wiphy,
 
 	rtw_setopmode_cmd(padapter, networkType, RTW_CMDF_WAIT_ACK);
 
+	/* iwconfig path raises netif carrier via rtw_indicate_connect() when
+	 * entering monitor mode; the iw/cfg80211 path was missing this,
+	 * leaving carrier down and killing TX injection while RX still works. */
+	if (type == NL80211_IFTYPE_MONITOR
+	    && check_fwstate(&padapter->mlmepriv, WIFI_MONITOR_STATE) == _TRUE)
+		rtw_indicate_connect(padapter);
+
 exit:
 
 	RTW_INFO(FUNC_NDEV_FMT" ret:%d\n", FUNC_NDEV_ARG(ndev), ret);
