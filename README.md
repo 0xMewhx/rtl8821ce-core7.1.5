@@ -1,48 +1,53 @@
 # rtl8821ce-core7.1.5
 
-Fork of [rtl8821ce](https://github.com/tomaspinho/rtl8821ce) driver, patched to build and work on Linux kernel 7.1.5+ (tested on Kali).
+Fork of [tomaspinho/rtl8821ce](https://github.com/tomaspinho/rtl8821ce), patched for Linux kernel **7.1.5+** (tested on Kali).
 
-Original driver didn't compile on newer kernels — API changes broke the build and packet injection was broken. This fork fixes both.
+Upstream no longer compiles on recent kernels — and its packet injection never worked at all (the author stated monitor mode would *never* be supported, then archived the repo). This fork fixes **both**: it builds on 7.1.5+ and injection actually works.
 
-## What's changed
+## Fixes
 
-- `Makefile` — fixed build rules for kernel 7.1+ (kernel API changes)
-- `core/rtw_debug.c` — adapted to new kernel debug API
-- `core/rtw_mlme_ext.c` — fixed MLME extension compatibility
-- `hal/hal_com.c` — hardware abstraction layer fixes for new kernel
-- `os_dep/linux/ioctl_cfg80211.c` — cfg80211 ioctl compatibility, packet injection fix
-- `monitorfix.patch` — patch for monitor mode issues
+- **Build on kernel 7.1.5+** — updated cfg80211 callbacks for the new `struct wireless_dev`-based API
+- **Packet injection in monitor mode** — `cfg80211_rtw_change_iface()` now calls `rtw_indicate_connect()` when switching to monitor. Without it the TX path never comes up and injection sits at 0%
+
+Changed files: `Makefile`, `os_dep/linux/ioctl_cfg80211.c`
 
 ## Known issues
 
-- `iw wlan0 set type monitor` fails with `command failed: Operation not supported (-95)` on kernel 7.1.5.
-  Use `iwconfig wlan0 mode monitor` instead — works reliably.
+`iw dev wlan0 set type monitor` prints `command failed: Operation not supported (-95)`.
+**Harmless** — the mode still applies. Just bring the interface up and verify with `aireplay-ng --test`:
+
+```
+21:58:28  Trying broadcast probe requests...
+21:58:29  Injection is working!
+21:58:41  Ping (min/avg/max): 5.578ms/15.970ms/32.048ms Power: -54.33
+21:58:41  30/30: 100%
+```
 
 ## Install
 
 ```bash
-git clone git@github.com:0xMewhx/rtl8821ce-core7.1.5.git
+git clone https://github.com/0xMewhx/rtl8821ce-core7.1.5.git
 cd rtl8821ce-core7.1.5
 make
-sudo insmod 8821ce.ko
+sudo make install
+sudo modprobe -r 8821ce && sudo modprobe 8821ce
 ```
 
 Or via DKMS: `sudo ./dkms-install.sh`
 
+## Monitor mode + injection
+
+```bash
+sudo iwconfig wlan0 mode monitor    # or: sudo iw dev wlan0 set type monitor (prints -95, ignore)
+sudo ip link set wlan0 up
+sudo aireplay-ng --test wlan0
+```
+
 ## Tested
 
-- Kernel 7.1.5+kali-amd64
-- Packet injection confirmed working via `aireplay-ng --test` (90-100% success rate)
+- Kernel `7.1.5+kali-amd64` (Kali)
+- `aireplay-ng --test`: 27/30 (90%) – 30/30 (100%) — injection confirmed working
 
 ## License
 
-GPL, same as original driver. See `COPYING`.
-
-## Key fix detail
-
-`cfg80211_rtw_del_key()` in `os_dep/linux/ioctl_cfg80211.c` used the old
-`del_key(wiphy, netdev, ...)` callback signature. Kernel 7.1+ cfg80211 API
-passes `struct wireless_dev *wdev` instead of `struct net_device *netdev`.
-Fixed by changing the parameter to `wdev` and deriving `netdev` from
-`wdev->netdev` inside the function body, so the rest of the function logic
-didn't need touching.
+GPL-2.0, same as upstream. See `COPYING`.
